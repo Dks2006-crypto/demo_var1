@@ -31,10 +31,10 @@ class CardForm
                 TextInput::make('year')
                     ->label('Год издания'),
                 Select::make('binding')
-                    ->label('Состояние')
+                    ->label('Переплёт')
                     ->options([
-                        'hard' => 'Твёрдое',
-                        'soft' => 'Мягкое',
+                        'hard' => 'Твёрдый',
+                        'soft' => 'Мягкий',
                     ]),
                 Select::make('book_condition')
                     ->label('Состояние книги')

@@ -5,8 +5,6 @@ namespace App\Filament\Admin\Resources\Cards\Tables;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -19,16 +17,42 @@ class CardsTable
         return $table
             ->columns([
                 TextColumn::make('user.name')
-                    ->label('Пользователь'),
+                    ->label('Пользователь')
+                    ->searchable(),
                 TextColumn::make('book_title')
-                    ->label('Название'),
+                    ->label('Название')
+                    ->searchable(),
                 TextColumn::make('book_author')
-                    ->label('Автор'),
+                    ->label('Автор')
+                    ->searchable(),
                 TextColumn::make('type')
-                    ->label('Тип'),
+                    ->label('Тип')
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'share' => 'Готов поделиться',
+                        'want' => 'Хочу себе',
+                        default => $state,
+                    }),
                 TextColumn::make('status')
                     ->label('Статус')
-                    ->badge(),
+                    ->badge()
+                    ->formatStateUsing(fn (string $state) => match ($state) {
+                        'pending' => 'На рассмотрении',
+                        'published' => 'Опубликована',
+                        'rejected' => 'Отклонена',
+                        'archived' => 'В архиве',
+                        default => $state,
+                    })
+                    ->color(fn (string $state) => match ($state) {
+                        'pending' => 'warning',
+                        'published' => 'success',
+                        'rejected' => 'danger',
+                        'archived' => 'gray',
+                        default => 'gray',
+                    }),
+                TextColumn::make('created_at')
+                    ->label('Создана')
+                    ->dateTime('d.m.Y H:i')
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('status')
@@ -39,15 +63,17 @@ class CardsTable
                         'archived' => 'В архиве',
                     ]),
             ])
-            ->searchable()
+            ->defaultSort('created_at', 'desc')
             ->recordActions([
-                EditAction::make(),
-
                 Action::make('publish')
                     ->label('Опубликовать')
                     ->icon('heroicon-o-check')
                     ->color('success')
-                    ->action(fn ($record) => $record->update(['status' => 'publish']))
+                    ->requiresConfirmation()
+                    ->action(fn ($record) => $record->update([
+                        'status' => 'published',
+                        'rejected_reason' => null,
+                    ]))
                     ->visible(fn ($record) => $record->status === 'pending'),
 
                 Action::make('reject')
@@ -56,7 +82,7 @@ class CardsTable
                     ->icon('heroicon-o-x-mark')
                     ->form([
                         Textarea::make('rejected_reason')
-                            ->label('Прияина отказа')
+                            ->label('Причина отказа')
                             ->required(),
                     ])
                     ->action(fn ($record, array $data) => $record->update([
